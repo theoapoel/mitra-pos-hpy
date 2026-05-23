@@ -174,7 +174,7 @@
 async function toggleActive(userId, btn) {
     btn.disabled = true;
     try {
-        const res = await api.post(`/users/${userId}/toggle-active`);
+        const res = await api.post(`{{ url('users') }}/${userId}/toggle-active`);
         if (res.success) {
             btn.dataset.active = res.is_active ? '1' : '0';
             btn.className = `btn btn-sm ${res.is_active ? 'btn-success' : 'btn-ghost'}`;

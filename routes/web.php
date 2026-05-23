@@ -86,7 +86,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/transaction/{transaction}', [ErpSyncController::class, 'syncSingle'])->name('single');
             Route::post('/retry-failed',              [ErpSyncController::class, 'retryFailed'])->name('retry');
             Route::post('/pull-products',             [ErpSyncController::class, 'pullProducts'])->name('pull-products');
-            Route::post('/pull-customers',            [ErpSyncController::class, 'pullCustomers'])->name('pull-customers');
             Route::post('/push-customer/{customer}',  [ErpSyncController::class, 'pushCustomer'])->name('push-customer');
         });
         Route::middleware('role:admin')->group(function () {

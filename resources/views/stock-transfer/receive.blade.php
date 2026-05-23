@@ -11,7 +11,7 @@
             </svg>
             Terima Barang
         </h1>
-        <p class="page-subtitle">Penerimaan barang dari in-transit — Material Transfer for Receive</p>
+        <p class="page-subtitle">Penerimaan barang — scan nomor dokumen pengiriman</p>
     </div>
     <a href="{{ route('stock-transfer.index') }}" class="btn btn-ghost">← Kembali</a>
 </div>
@@ -22,48 +22,80 @@
 
 @if(count($warehouses) === 0)
     <div class="alert alert-warning mb-3">
-        <strong>Perhatian:</strong> Belum ada warehouse yang diaktifkan. Silakan pull dan aktifkan warehouse di <a href="{{ route('warehouses.index') }}">menu Warehouse</a>, lalu kembali ke halaman ini.
+        <strong>Perhatian:</strong> Belum ada warehouse yang diaktifkan. Silakan pull dan aktifkan warehouse di
+        <a href="{{ route('warehouses.index') }}">menu Warehouse</a>, lalu kembali ke halaman ini.
     </div>
 @endif
 
-<form method="POST" action="{{ route('stock-transfer.receive.store') }}" id="receiveForm">
+{{-- ═══════════════════════════════════════════════════════════
+     SCAN AREA — always visible at top, auto-focused
+═══════════════════════════════════════════════════════════ --}}
+<div class="card mb-3" id="scanCard">
+    <div class="card-body" style="padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div style="flex-shrink:0;width:48px;height:48px;border-radius:12px;background:var(--blue-light);display:flex;align-items:center;justify-content:center;">
+                <i class="fas fa-barcode" style="font-size:22px;color:var(--blue);"></i>
+            </div>
+            <div style="flex:1;min-width:260px;">
+                <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px;">
+                    Scan Nomor Dokumen
+                    <span id="scanStatusBadge" style="margin-left:8px;font-size:11px;padding:2px 8px;border-radius:10px;background:var(--surface2);color:var(--text2);font-weight:500;">Siap Scan</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" id="scanInput"
+                        class="form-control"
+                        placeholder="Arahkan barcode scanner ke sini, atau ketik nomor dokumen…"
+                        autocomplete="off"
+                        style="font-family:'Google Sans',sans-serif;font-size:15px;letter-spacing:.5px;font-weight:600;">
+                    <button type="button" class="btn btn-primary" onclick="triggerLoad()" id="scanBtn">
+                        <i class="fas fa-download"></i> Muat
+                    </button>
+                    <button type="button" class="btn btn-ghost" onclick="resetScan()" id="resetBtn" style="display:none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="scanFeedback" style="margin-top:6px;font-size:13px;min-height:18px;"></div>
+            </div>
+        </div>
+
+        {{-- Fallback: dropdown jika pendingEntries ada --}}
+        @if(count($pendingEntries))
+        <div id="dropdownFallback" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+            <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500;">
+                <i class="fas fa-list"></i> Atau pilih dari daftar:
+            </div>
+            <div style="display:flex;gap:8px;">
+                <select id="erpEntrySelect" class="form-select" style="flex:1;">
+                    <option value="">-- Pilih Stock Entry --</option>
+                    @foreach($pendingEntries as $entry)
+                        <option value="{{ $entry['name'] }}">
+                            {{ $entry['name'] }} · {{ $entry['posting_date'] }}
+                            @if($entry['from_warehouse'] ?? false) · {{ $entry['from_warehouse'] }}@endif
+                        </option>
+                    @endforeach
+                </select>
+                <button type="button" class="btn btn-outline" onclick="loadFromDropdown()">Muat Item</button>
+            </div>
+        </div>
+        @endif
+    </div>
+</div>
+
+{{-- ═══════════════════════════════════════════════════════════
+     FORM — muncul setelah scan berhasil
+═══════════════════════════════════════════════════════════ --}}
+<form method="POST" action="{{ route('stock-transfer.receive.store') }}" id="receiveForm" style="display:none;">
     @csrf
+    <input type="hidden" name="erp_source_entry" id="erpSourceEntry">
+
     <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
 
         {{-- LEFT --}}
         <div>
-            {{-- Load from ERP HPY --}}
-            @if(count($pendingEntries))
-            <div class="card mb-3">
-                <div class="card-header">
-                    <span class="card-title">Muat dari Stock Entry ERP HPY</span>
-                </div>
-                <div class="card-body">
-                    <p style="font-size:13px;color:var(--text2);margin-bottom:10px;">
-                        Pilih Stock Entry yang sudah submit di ERP HPY untuk memuat item secara otomatis.
-                    </p>
-                    <div style="display:flex;gap:8px;">
-                        <select id="erpEntrySelect" class="form-select" style="flex:1;">
-                            <option value="">-- Pilih Stock Entry --</option>
-                            @foreach($pendingEntries as $entry)
-                                <option value="{{ $entry['name'] }}">
-                                    {{ $entry['name'] }} · {{ $entry['posting_date'] }}
-                                    @if($entry['from_warehouse'] ?? false) · {{ $entry['from_warehouse'] }}@endif
-                                </option>
-                            @endforeach
-                        </select>
-                        <button type="button" class="btn btn-outline" onclick="loadFromErp()">Muat Item</button>
-                    </div>
-                    <div id="loadResult" style="margin-top:8px;font-size:13px;"></div>
-                </div>
-            </div>
-            @endif
-
-            {{-- Warehouse --}}
+            {{-- Info --}}
             <div class="card mb-3">
                 <div class="card-header"><span class="card-title">Informasi Penerimaan</span></div>
                 <div class="card-body">
-                    <input type="hidden" name="erp_source_entry" id="erpSourceEntry">
                     <div class="grid-2 gap-3">
                         <div class="form-group">
                             <label class="form-label">Gudang Asal (In-Transit) <span style="color:var(--red)">*</span></label>
@@ -137,7 +169,7 @@
                         </table>
                     </div>
                     <div id="emptyRow" style="text-align:center;padding:32px;color:var(--text2);font-size:14px;">
-                        Belum ada barang. Muat dari ERP HPY atau tambahkan manual.
+                        Belum ada barang.
                     </div>
                 </div>
             </div>
@@ -148,7 +180,7 @@
             <div class="card" style="position:sticky;top:80px;">
                 <div class="card-header"><span class="card-title">Cari Produk Lokal</span></div>
                 <div class="card-body">
-                    <input type="text" id="productSearch" class="form-control" placeholder="Nama / SKU..."
+                    <input type="text" id="productSearch" class="form-control" placeholder="Nama / SKU…"
                         style="margin-bottom:10px;">
                     <div id="productResults" style="max-height:400px;overflow-y:auto;"></div>
                 </div>
@@ -176,13 +208,146 @@
 .product-card:hover { border-color:var(--blue);background:var(--bg); }
 .product-card .name { font-size:13px;font-weight:600;color:var(--text); }
 .product-card .meta { font-size:11px;color:var(--text2);margin-top:2px; }
+
+#scanCard { transition: border-color .2s, box-shadow .2s; }
+#scanCard.scanning { border-color:var(--blue); box-shadow: 0 0 0 3px rgba(66,133,244,.15); }
+#scanCard.loaded  { border-color:var(--green); box-shadow: 0 0 0 3px rgba(52,168,83,.12); }
+#scanCard.error   { border-color:var(--red);   box-shadow: 0 0 0 3px rgba(234,67,53,.12); }
 </style>
 
 <script>
 const products = @json($productData);
-
 let rowIdx = 0;
 
+// ── Auto-focus scan input ──────────────────────────────────────
+const scanInput = document.getElementById('scanInput');
+scanInput.focus();
+
+// ── Enter key triggers load ────────────────────────────────────
+scanInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        triggerLoad();
+    }
+});
+
+// ── Scan / load logic ──────────────────────────────────────────
+async function triggerLoad() {
+    const val = scanInput.value.trim();
+    if (!val) return;
+    await doLoad(val);
+}
+
+async function loadFromDropdown() {
+    const sel = document.getElementById('erpEntrySelect');
+    if (!sel?.value) { toast('Pilih Stock Entry terlebih dahulu.', 'error'); return; }
+    scanInput.value = sel.value;
+    await doLoad(sel.value);
+}
+
+async function doLoad(entryName) {
+    setScanState('scanning');
+    setFeedback('info', '<span class="spinner" style="border-color:rgba(66,133,244,.3);border-top-color:var(--blue);width:14px;height:14px;margin-right:6px;"></span>Memuat dokumen <strong>' + entryName + '</strong>…');
+    document.getElementById('scanBtn').disabled = true;
+
+    try {
+        const res = await api.post('{{ route("stock-transfer.load-items") }}', { entry_name: entryName });
+
+        if (!res.success) {
+            setScanState('error');
+            setFeedback('error', '<i class="fas fa-exclamation-circle"></i> ' + (res.error ?? 'Dokumen tidak ditemukan.'));
+            document.getElementById('scanBtn').disabled = false;
+            scanInput.select();
+            return;
+        }
+
+        // Isi warehouse
+        setWarehouse('fromWarehouse', res.from_warehouse);
+        setWarehouse('toWarehouse', res.to_warehouse);
+        document.getElementById('erpSourceEntry').value = entryName;
+
+        // Isi tabel
+        document.getElementById('itemBody').innerHTML = '';
+        rowIdx = 0;
+        res.items.forEach(i => addRow({
+            item_code: i.item_code,
+            name:      i.item_name,
+            quantity:  i.quantity,
+            unit:      i.unit,
+        }));
+
+        // Tampilkan form
+        document.getElementById('receiveForm').style.display = '';
+
+        setScanState('loaded');
+        setFeedback('success',
+            '<i class="fas fa-check-circle"></i> ' +
+            '<strong>' + entryName + '</strong> — ' + res.items.length + ' item dimuat.' +
+            ' <a href="#" onclick="resetScan();return false;" style="color:var(--blue);text-decoration:underline;margin-left:8px;">Scan dokumen lain</a>');
+
+        document.getElementById('resetBtn').style.display = '';
+        document.getElementById('scanInput').readOnly = true;
+        document.getElementById('scanBtn').disabled = true;
+
+        renderProducts('');
+
+    } catch (e) {
+        setScanState('error');
+        setFeedback('error', '<i class="fas fa-exclamation-circle"></i> Gagal: ' + e.message);
+        document.getElementById('scanBtn').disabled = false;
+        scanInput.select();
+    }
+}
+
+function resetScan() {
+    scanInput.value = '';
+    scanInput.readOnly = false;
+    document.getElementById('scanBtn').disabled = false;
+    document.getElementById('resetBtn').style.display = 'none';
+    document.getElementById('receiveForm').style.display = 'none';
+    document.getElementById('itemBody').innerHTML = '';
+    rowIdx = 0;
+    checkEmpty();
+    setScanState('');
+    setFeedback('', '');
+    scanInput.focus();
+}
+
+function setScanState(state) {
+    const card = document.getElementById('scanCard');
+    card.classList.remove('scanning', 'loaded', 'error');
+    if (state) card.classList.add(state);
+
+    const badge = document.getElementById('scanStatusBadge');
+    const styles = {
+        '':         ['Siap Scan',  'background:var(--surface2);color:var(--text2)'],
+        'scanning': ['Memuat…',    'background:var(--blue-light);color:var(--blue)'],
+        'loaded':   ['Dimuat',     'background:#E6F4EA;color:var(--green)'],
+        'error':    ['Error',      'background:#FCE8E6;color:var(--red)'],
+    };
+    const [label, style] = styles[state] ?? styles[''];
+    badge.textContent = label;
+    badge.style.cssText = style + ';font-size:11px;padding:2px 8px;border-radius:10px;font-weight:500;margin-left:8px;';
+}
+
+function setFeedback(type, html) {
+    const el = document.getElementById('scanFeedback');
+    const colors = { success: 'var(--green)', error: 'var(--red)', info: 'var(--blue-dark)', '': 'var(--text2)' };
+    el.style.color = colors[type] ?? colors[''];
+    el.innerHTML = html;
+}
+
+function setWarehouse(id, name) {
+    const el = document.getElementById(id);
+    if (!el || !name) return;
+    if (el.tagName === 'SELECT') {
+        [...el.options].forEach(o => { if (o.value === name) o.selected = true; });
+    } else {
+        el.value = name;
+    }
+}
+
+// ── Table rows ─────────────────────────────────────────────────
 function addRow(item = null) {
     const tbody = document.getElementById('itemBody');
     const idx   = rowIdx++;
@@ -205,7 +370,8 @@ function addRow(item = null) {
         </td>
         <td><input name="items[${idx}][unit]" value="${item?.unit ?? 'Nos'}" placeholder="Nos"></td>
         <td style="text-align:center;">
-            <button type="button" onclick="removeRow(this)" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:18px;line-height:1;">×</button>
+            <button type="button" onclick="removeRow(this)"
+                style="background:none;border:none;cursor:pointer;color:var(--red);font-size:18px;line-height:1;">×</button>
         </td>`;
     tbody.appendChild(tr);
     checkEmpty();
@@ -216,7 +382,7 @@ function checkDiff(input) {
     const orig = parseFloat(tr.querySelector('input[name*="[quantity]"]').value) || 0;
     const act  = parseFloat(input.value) || 0;
     let note   = tr.querySelector('.qty-diff');
-    if (!note) { note = document.createElement('span'); note.className='qty-diff'; input.after(note); }
+    if (!note) { note = document.createElement('span'); note.className = 'qty-diff'; input.after(note); }
     note.textContent = act !== orig ? `Selisih: ${(act - orig).toFixed(3)}` : '';
 }
 
@@ -228,47 +394,7 @@ function checkEmpty() {
         tbody.querySelectorAll('tr').length === 0 ? '' : 'none';
 }
 
-async function loadFromErp() {
-    const sel = document.getElementById('erpEntrySelect');
-    const name = sel.value;
-    if (!name) { toast('Pilih Stock Entry terlebih dahulu.', 'error'); return; }
-
-    const resultEl = document.getElementById('loadResult');
-    resultEl.innerHTML = '<span style="color:var(--text2);">Memuat...</span>';
-
-    try {
-        const res  = await api.post('{{ route("stock-transfer.load-items") }}', { entry_name: name });
-        if (!res.success) { resultEl.innerHTML = `<span style="color:var(--red);">${res.error}</span>`; return; }
-
-        // Set warehouses
-        const fromWh = document.getElementById('fromWarehouse');
-        const toWh   = document.getElementById('toWarehouse');
-        if (fromWh.tagName === 'SELECT') {
-            [...fromWh.options].forEach(o => { if (o.value === res.from_warehouse) o.selected = true; });
-        } else { fromWh.value = res.from_warehouse; }
-        if (toWh.tagName === 'SELECT') {
-            [...toWh.options].forEach(o => { if (o.value === res.to_warehouse) o.selected = true; });
-        } else { toWh.value = res.to_warehouse; }
-
-        document.getElementById('erpSourceEntry').value = name;
-
-        // Clear + populate items
-        document.getElementById('itemBody').innerHTML = '';
-        rowIdx = 0;
-        res.items.forEach(i => addRow({
-            item_code: i.item_code,
-            name:      i.item_name,
-            quantity:  i.quantity,
-            unit:      i.unit,
-        }));
-
-        resultEl.innerHTML = `<span style="color:var(--green);">✓ ${res.items.length} item dimuat dari ${name}</span>`;
-    } catch(e) {
-        resultEl.innerHTML = `<span style="color:var(--red);">Gagal: ${e.message}</span>`;
-    }
-}
-
-// Product search
+// ── Product search (right panel) ───────────────────────────────
 let searchTimer;
 document.getElementById('productSearch').addEventListener('input', function () {
     clearTimeout(searchTimer);
@@ -290,13 +416,14 @@ function renderProducts(q) {
         return;
     }
     box.innerHTML = filtered.slice(0, 30).map(p => `
-        <div class="product-card" onclick='addRow(${JSON.stringify({...p, quantity: 1})})'>
+        <div class="product-card" onclick='addRow(${JSON.stringify({ ...p, quantity: 1 })})'>
             <div class="name">${p.name}</div>
             <div class="meta">SKU: ${p.sku ?? '—'} · ${p.unit ?? 'Nos'}</div>
         </div>`).join('');
 }
 
-document.getElementById('receiveForm').addEventListener('submit', function(e) {
+// ── Form submit guard ──────────────────────────────────────────
+document.getElementById('receiveForm').addEventListener('submit', function (e) {
     const rows = document.querySelectorAll('#itemBody tr');
     if (rows.length === 0) {
         e.preventDefault();
@@ -304,10 +431,9 @@ document.getElementById('receiveForm').addEventListener('submit', function(e) {
         return;
     }
     document.getElementById('submitBtn').disabled = true;
-    document.getElementById('submitBtn').innerHTML = '<span style="opacity:.7">Menyimpan...</span>';
+    document.getElementById('submitBtn').innerHTML = '<span style="opacity:.7">Menyimpan…</span>';
 });
 
 checkEmpty();
-renderProducts('');
 </script>
 @endsection

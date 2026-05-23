@@ -25,7 +25,7 @@
                     <label class="form-label">Nama Toko <span style="color:var(--red)">*</span></label>
                     <input type="text" name="store_name" class="form-control"
                         value="{{ $settings['store_name'] }}"
-                        placeholder="Contoh: HAPPYPOS" maxlength="100"
+                        placeholder="Contoh: HPYSync" maxlength="100"
                         oninput="updatePreview()">
                     @error('store_name')<p style="font-size:12px;color:var(--red);margin-top:4px;">{{ $message }}</p>@enderror
                 </div>
@@ -71,6 +71,40 @@
                     <p style="font-size:12px;color:var(--text3);margin-top:4px;">Pesan yang tampil di bagian bawah struk</p>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">POS Class</label>
+                    <input type="text" name="pos_class" class="form-control"
+                        value="{{ $settings['pos_class'] }}"
+                        placeholder="Contoh: Retail, Wholesale, B2B…" maxlength="100">
+                    <p style="font-size:12px;color:var(--text3);margin-top:4px;">Digunakan saat sinkronisasi transaksi ke ERP HPY</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tampilan Produk di Kasir</label>
+                    <div style="display:flex;gap:12px;margin-top:4px">
+                        <label style="flex:1;cursor:pointer">
+                            <input type="radio" name="pos_product_display" value="image"
+                                {{ ($settings['pos_product_display'] ?? 'image') === 'image' ? 'checked' : '' }}
+                                style="display:none" class="prod-display-radio">
+                            <div class="prod-display-option" style="border:2px solid var(--border);border-radius:10px;padding:14px;text-align:center;transition:all .2s">
+                                <div style="font-size:28px;margin-bottom:6px">🖼️</div>
+                                <div style="font-size:13px;font-weight:600">Gambar + Teks</div>
+                                <div style="font-size:11px;color:var(--text3);margin-top:2px">Tampilkan foto produk</div>
+                            </div>
+                        </label>
+                        <label style="flex:1;cursor:pointer">
+                            <input type="radio" name="pos_product_display" value="text"
+                                {{ ($settings['pos_product_display'] ?? 'image') === 'text' ? 'checked' : '' }}
+                                style="display:none" class="prod-display-radio">
+                            <div class="prod-display-option" style="border:2px solid var(--border);border-radius:10px;padding:14px;text-align:center;transition:all .2s">
+                                <div style="font-size:28px;margin-bottom:6px">📝</div>
+                                <div style="font-size:13px;font-weight:600">Teks Saja</div>
+                                <div style="font-size:11px;color:var(--text3);margin-top:2px">Lebih banyak produk terlihat</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 <button type="button" class="btn btn-primary" id="saveBtn" onclick="saveSettings()">
                     <i class="fas fa-save"></i> Simpan Pengaturan
                 </button>
@@ -97,12 +131,25 @@
 
 @push('scripts')
 <script>
+// Radio button visual untuk tampilan produk
+function updateProdDisplayUI() {
+    document.querySelectorAll('.prod-display-radio').forEach(radio => {
+        const box = radio.nextElementSibling;
+        box.style.borderColor    = radio.checked ? 'var(--blue)' : 'var(--border)';
+        box.style.background     = radio.checked ? 'var(--blue-light, #E8F0FE)' : '';
+        box.style.color          = radio.checked ? 'var(--blue)' : '';
+    });
+}
+document.querySelectorAll('.prod-display-radio').forEach(r => {
+    r.addEventListener('change', updateProdDisplayUI);
+});
+
 function val(name) {
     return document.querySelector(`[name="${name}"]`)?.value?.trim() ?? '';
 }
 
 function updatePreview() {
-    const name    = val('store_name')     || 'HAPPYPOS';
+    const name    = val('store_name')     || 'HPYSync';
     const tagline = val('store_tagline')  || 'Point of Sale System';
     const address = val('store_address');
     const phone   = val('store_phone');
@@ -169,5 +216,6 @@ async function saveSettings() {
 
 // Init preview on load
 updatePreview();
+updateProdDisplayUI();
 </script>
 @endpush

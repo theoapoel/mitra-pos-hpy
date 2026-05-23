@@ -11,6 +11,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ErpNextService
 {
@@ -114,16 +115,23 @@ class ErpNextService
     {
         $company    = \App\Models\Setting::get('erpnext_company', env('ERPNEXT_COMPANY'));
         $posProfile = \App\Models\Setting::get('erpnext_pos_profile', env('ERPNEXT_POS_PROFILE'));
+        $priceList  = \App\Models\Setting::get('erpnext_price_list', '');
 
         $items = $transaction->items->map(function ($item) {
+            // Fold diskon item ke dalam rate — kirim net rate langsung.
+            // Ini menghindari konflik dengan ERPNext ketika price_list_rate = 0
+            // (tidak ada price list), karena ERPNext akan menghitung diskon dari rate
+            // yang kita kirim, bukan dari price list.
+            $discAmt = (float) $item->discount_amount;
+            $netRate = max(0, (float) $item->price - ($item->quantity > 0 ? $discAmt / $item->quantity : 0));
+            $netAmount = $netRate * $item->quantity;
             return [
-                'item_code'       => $item->product->erp_item_code ?? $item->product_sku,
-                'item_name'       => $item->product_name,
-                'qty'             => $item->quantity,
-                'rate'            => (float) $item->price,
-                'amount'          => (float) $item->subtotal,
-                'discount_amount' => (float) $item->discount_amount,
-                'uom'             => $item->product->unit ?? 'Nos',
+                'item_code' => $item->product->erp_item_code ?? $item->product_sku,
+                'item_name' => $item->product_name,
+                'qty'       => $item->quantity,
+                'rate'      => $netRate,
+                'amount'    => $netAmount,
+                'uom'       => $item->product->unit ?? 'Nos',
             ];
         })->toArray();
 
@@ -154,12 +162,19 @@ class ErpNextService
             'posting_date'                   => $transaction->created_at->format('Y-m-d'),
             'posting_time'                   => $transaction->created_at->format('H:i:s'),
             'set_posting_time'               => 1,
-            'customer'                       => $transaction->customer?->erp_customer_name ?? 'Walk-in Customer',
+            'customer'                       => $transaction->customer?->erp_customer_name
+                                                ?? \App\Models\Setting::get('erpnext_walkin_customer', 'Walk-in Customer'),
             'items'                          => $items,
             'payments'                       => $payments,
-            'discount_amount'                => (float) $transaction->discount_amount,
+            // apply_discount_on = 'Net Total' agar % dihitung dari net (setelah diskon item)
+            'apply_discount_on'              => 'Net Total',
             'additional_discount_percentage' => (float) $transaction->discount_percent,
+            'discount_amount'                => (float) $transaction->discount_amount,
         ];
+
+        if ($priceList) {
+            $payload['selling_price_list'] = $priceList;
+        }
 
         if ($transaction->tax_amount > 0) {
             $payload['taxes'] = [[
@@ -197,11 +212,12 @@ class ErpNextService
     public function pullProducts(int $limit = 100, int $start = 0): array
     {
         try {
-            $fields  = '["name","item_name","item_code","description","item_group","standard_rate","valuation_rate","stock_uom","is_sales_item","disabled"]';
+            $fields  = '["name","item_name","item_code","description","item_group","standard_rate","valuation_rate","stock_uom","is_sales_item","disabled","image"]';
             $filters = '[["is_sales_item","=",1],["disabled","=",0]]';
 
             $response = $this->client->get('/api/resource/Item', [
-                'query' => [
+                'timeout' => 120,
+                'query'   => [
                     'fields'      => $fields,
                     'filters'     => $filters,
                     'limit'       => $limit,
@@ -209,11 +225,90 @@ class ErpNextService
                 ]
             ]);
 
-            $data = json_decode($response->getBody()->getContents(), true);
-            return ['success' => true, 'data' => $data['data'] ?? $data['message'] ?? []];
+            $data  = json_decode($response->getBody()->getContents(), true);
+            $items = $data['data'] ?? $data['message'] ?? [];
+
+            // Overlay harga dari Price List jika dikonfigurasi
+            $priceList = \App\Models\Setting::get('erpnext_price_list', '');
+            if ($priceList && count($items) > 0) {
+                $itemCodes = array_column($items, 'name');
+                $priceMap  = $this->fetchItemPricesMap($itemCodes, $priceList);
+
+                foreach ($items as &$item) {
+                    if (isset($priceMap[$item['name']])) {
+                        $item['standard_rate'] = $priceMap[$item['name']];
+                    }
+                }
+                unset($item);
+            }
+
+            return ['success' => true, 'data' => $items];
 
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================
+    // DOWNLOAD PRODUCT IMAGE FROM ERPNext → local public/images/products/
+    // =========================================================
+    public function downloadProductImage(string $erpImagePath, string $itemCode): ?string
+    {
+        try {
+            $dir = public_path('images/products');
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            $ext      = strtolower(pathinfo($erpImagePath, PATHINFO_EXTENSION)) ?: 'jpg';
+            $filename = Str::slug($itemCode) . '.' . $ext;
+            $dest     = $dir . DIRECTORY_SEPARATOR . $filename;
+
+            $response = $this->client->get($erpImagePath, ['stream' => false]);
+            file_put_contents($dest, $response->getBody()->getContents());
+
+            return '/images/products/' . $filename;
+
+        } catch (\Exception $e) {
+            Log::warning("Failed to download product image '{$erpImagePath}' for item '{$itemCode}': " . $e->getMessage());
+            return null;
+        }
+    }
+
+    // =========================================================
+    // FETCH ITEM PRICES FROM PRICE LIST
+    // =========================================================
+    private function fetchItemPricesMap(array $itemCodes, string $priceList): array
+    {
+        try {
+            $filters = json_encode([
+                ['price_list', '=', $priceList],
+                ['item_code', 'in', $itemCodes],
+                ['selling', '=', 1],
+            ]);
+
+            $response = $this->client->get('/api/resource/Item Price', [
+                'query' => [
+                    'fields'  => json_encode(['item_code', 'price_list_rate']),
+                    'filters' => $filters,
+                    'limit'   => count($itemCodes),
+                ]
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true);
+            $map  = [];
+            foreach ($data['data'] ?? [] as $row) {
+                // Simpan harga tertinggi jika ada duplikasi (misal valid_from berbeda)
+                $code = $row['item_code'];
+                if (!isset($map[$code]) || $row['price_list_rate'] > $map[$code]) {
+                    $map[$code] = (float) $row['price_list_rate'];
+                }
+            }
+            return $map;
+
+        } catch (\Exception $e) {
+            Log::warning("Failed to fetch Item Prices from price list '{$priceList}': " . $e->getMessage());
+            return [];
         }
     }
 
@@ -248,15 +343,21 @@ class ErpNextService
     // =========================================================
     public function pushCustomer(Customer $customer): array
     {
+        $posClass = \App\Models\Setting::get('pos_class', '');
+
         $payload = [
             'doctype'        => 'Customer',
             'customer_name'  => $customer->name,
             'customer_type'  => 'Individual',
-            'customer_group' => 'Individual',
+            'customer_group' => 'Retail',
             'territory'      => 'Indonesia',
             'mobile_no'      => $customer->phone,
             'email_id'       => $customer->email,
         ];
+
+        if ($posClass !== '') {
+            $payload['class'] = $posClass;
+        }
 
         try {
             $response = $this->client->post('/api/resource/Customer', ['json' => $payload]);

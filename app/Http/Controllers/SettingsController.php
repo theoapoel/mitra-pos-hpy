@@ -9,7 +9,8 @@ class SettingsController extends Controller
 {
     private const STORE_KEYS = [
         'store_name', 'store_tagline', 'store_address',
-        'store_phone', 'store_email', 'receipt_footer',
+        'store_phone', 'store_email', 'receipt_footer', 'pos_class',
+        'pos_product_display',
     ];
 
     public function index()
@@ -31,6 +32,8 @@ class SettingsController extends Controller
             'store_phone'    => 'nullable|string|max:30',
             'store_email'    => 'nullable|email|max:100',
             'receipt_footer' => 'nullable|string|max:200',
+            'pos_class'           => 'nullable|string|max:100',
+            'pos_product_display' => 'nullable|in:image,text',
         ]);
 
         foreach (self::STORE_KEYS as $key) {
@@ -44,12 +47,14 @@ class SettingsController extends Controller
     public static function storeSettings(): array
     {
         return [
-            'store_name'     => Setting::get('store_name', 'HAPPYPOS'),
+            'store_name'     => Setting::get('store_name', 'HPYSync'),
             'store_tagline'  => Setting::get('store_tagline', 'Point of Sale System'),
             'store_address'  => Setting::get('store_address', ''),
             'store_phone'    => Setting::get('store_phone', ''),
             'store_email'    => Setting::get('store_email', ''),
             'receipt_footer' => Setting::get('receipt_footer', 'Terima kasih atas kunjungan Anda!'),
+            'pos_class'           => Setting::get('pos_class', ''),
+            'pos_product_display' => Setting::get('pos_product_display', 'image'),
         ];
     }
 }

@@ -18,7 +18,12 @@ class PosController extends Controller
         $categories = Category::where('is_active', true)->get();
         $products = Product::active()->with('category')->get();
         $customers = Customer::where('is_active', true)->get(['id', 'code', 'name', 'phone', 'loyalty_points']);
-        return view('pos.index', compact('categories', 'products', 'customers'));
+        $storeSettings      = SettingsController::storeSettings();
+        $posClass           = $storeSettings['pos_class'] ?? '';
+        $posProductDisplay  = $storeSettings['pos_product_display'] ?? 'image';
+        $walkinCustomerName = \App\Models\Setting::get('erpnext_walkin_customer', 'Walk-in Customer');
+        $erpBaseUrl         = rtrim(\App\Models\Setting::get('erpnext_url', ''), '/');
+        return view('pos.index', compact('categories', 'products', 'customers', 'posClass', 'posProductDisplay', 'walkinCustomerName', 'erpBaseUrl'));
     }
 
     public function searchProducts(Request $request)
@@ -48,8 +53,10 @@ class PosController extends Controller
                 'stock' => $p->stock,
                 'unit' => $p->unit,
                 'tax_rate' => $p->tax_rate,
+                'track_stock' => (bool) $p->track_stock,
                 'image' => $p->image,
                 'category' => $p->category?->name,
+                'category_id' => $p->category_id,
                 'category_color' => $p->category?->color ?? '#4285F4',
                 'is_low_stock' => $p->isLowStock(),
             ];

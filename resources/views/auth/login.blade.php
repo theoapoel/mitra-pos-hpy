@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login — HPYSync POS</title>
+    <title>Login — HPYSync</title>
     {{-- <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet"> --}}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -405,8 +405,8 @@
     <div class="login-left">
         <div class="left-brand">
             <div class="left-logo">
-                <img src="/images/happypos.png" alt="HPYSync POS"
-    style="width:300%;height:200%;object-fit:contain;">
+                <img src="{{ asset('images/happypos.png') }}" alt="HPYSync"
+    style="max-width:100%;max-height:100%;object-fit:contain;">
             </div>
             <div class="left-sub">Integrated Hybrid POS & ERP</div>
         </div>
@@ -517,7 +517,7 @@
             </form>
 
             <div class="footer-text">
-                HappyPOS &copy; {{ date('Y') }} — Powered by HPY
+                HPYSync &copy; {{ date('Y') }} — Powered by HPY
             </div>
         </div>
     </div>

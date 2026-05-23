@@ -100,6 +100,18 @@
                         <input type="text" name="erpnext_pos_profile" class="form-control" value="{{ $settings['erpnext_pos_profile'] ?? '' }}" placeholder="POS Profile name">
                     </div>
                 </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Walk-in Customer</label>
+                        <input type="text" name="erpnext_walkin_customer" class="form-control" value="{{ $settings['erpnext_walkin_customer'] ?? '' }}" placeholder="Walk-in Customer">
+                        <p style="font-size:12px;color:var(--text3);margin-top:4px;">Customer HPY untuk transaksi tanpa pelanggan terdaftar</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Price List</label>
+                        <input type="text" name="erpnext_price_list" class="form-control" value="{{ $settings['erpnext_price_list'] ?? '' }}" placeholder="Standard Selling">
+                        <p style="font-size:12px;color:var(--text3);margin-top:4px;">Dipakai saat Pull Produk untuk mengambil harga dari HPY</p>
+                    </div>
+                </div>
                 <div style="display:flex;gap:8px">
                     <button type="button" class="btn btn-outline" onclick="testConnection()" id="testBtn">
                         <i class="fas fa-wifi"></i> Test Koneksi
@@ -137,13 +149,10 @@
             <!-- Pull Data -->
             <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:12px">
                 <div style="font-weight:700;font-size:14px;margin-bottom:4px"><i class="fas fa-arrow-down text-green"></i> Pull dari HPY</div>
-                <div style="font-size:13px;color:var(--text3);margin-bottom:12px">Ambil data produk dan customer dari HPY</div>
+                <div style="font-size:13px;color:var(--text3);margin-bottom:12px">Ambil data produk dari HPY ke lokal</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                     <button class="btn btn-success" onclick="pullProducts()" id="pullProductsBtn">
                         <i class="fas fa-box"></i> Pull Produk
-                    </button>
-                    <button class="btn btn-success" onclick="pullCustomers()" id="pullCustomersBtn">
-                        <i class="fas fa-users"></i> Pull Customer
                     </button>
                 </div>
             </div>
@@ -306,7 +315,7 @@ async function retryFailed() {
 async function syncSingle(id, btn) {
     btn.innerHTML = '<span class="spinner"></span>';
     btn.disabled = true;
-    const resp = await fetch(`/sync/transaction/${id}`, {
+    const resp = await fetch(`{{ url('sync/transaction') }}/${id}`, {
         method:'POST',
         headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}
     });
@@ -348,36 +357,6 @@ async function pullProducts() {
     btn.disabled = false;
 }
 
-async function pullCustomers() {
-    const btn = document.getElementById('pullCustomersBtn');
-    btn.innerHTML = '<span class="spinner"></span> Menarik semua customer...';
-    btn.disabled = true;
-
-    const resultEl = document.getElementById('syncResult');
-    resultEl.style.display = '';
-    resultEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--blue)"></i> Menarik customer dari HPY, harap tunggu... (data besar mungkin butuh beberapa menit)';
-
-    try {
-        const resp = await fetch('{{ route("sync.pull-customers") }}', {
-            method:'POST',
-            headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}
-        });
-        const data = await resp.json();
-        if (data.success) {
-            showSyncResult({...data, label: 'Customer'});
-            toast(`Customer: ${data.imported} baru, ${data.updated} diupdate — total ${data.total} record`, 'success');
-        } else {
-            resultEl.innerHTML = `<i class="fas fa-exclamation-circle" style="color:var(--red)"></i> Gagal: ${data.error}`;
-            toast('Gagal pull customer: ' + (data.error||'Error'), 'error');
-        }
-    } catch(e) {
-        resultEl.innerHTML = `<i class="fas fa-exclamation-circle" style="color:var(--red)"></i> Error: ${e.message}`;
-        toast('Error: ' + e.message, 'error');
-    }
-
-    btn.innerHTML = '<i class="fas fa-users"></i> Pull Customer';
-    btn.disabled = false;
-}
 
 function showSyncResult(data) {
     const el = document.getElementById('syncResult');

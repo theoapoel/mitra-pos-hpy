@@ -101,7 +101,7 @@
 async function pushCustomer(id, btn) {
     btn.innerHTML = '<span class="spinner" style="border-color:rgba(0,0,0,.2);border-top-color:var(--blue)"></span>';
     btn.disabled = true;
-    const resp = await fetch(`/sync/push-customer/${id}`, {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}});
+    const resp = await fetch(`{{ url('sync/push-customer') }}/${id}`, {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}});
     const data = await resp.json();
     toast(data.success ? 'Berhasil push ke HPY: '+data.docname : 'Gagal: '+data.error, data.success?'success':'error');
     if (data.success) setTimeout(()=>location.reload(),1000);

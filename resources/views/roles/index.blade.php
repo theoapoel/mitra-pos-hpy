@@ -334,7 +334,7 @@ async function saveEdit() {
     if (!label) { toast('Nama role tidak boleh kosong.', 'error'); return; }
 
     try {
-        const res = await api.post(`/roles/${editRoleId}?_method=PUT`, { label, description, color: editColor });
+        const res = await api.post(`{{ url('roles') }}/${editRoleId}?_method=PUT`, { label, description, color: editColor });
         if (res.success) {
             toast(res.message, 'success');
             document.getElementById('editModal').classList.remove('show');

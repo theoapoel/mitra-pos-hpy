@@ -77,7 +77,7 @@
 @push('scripts')
 <script>
 async function syncThis() {
-    const resp = await fetch('/sync/transaction/{{ $transaction->id }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}});
+    const resp = await fetch('{{ route("sync.single", $transaction) }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}});
     const data = await resp.json();
     toast(data.success?'Berhasil sync!':'Gagal: '+(data.error||''),data.success?'success':'error');
     if(data.success) setTimeout(()=>location.reload(),1000);

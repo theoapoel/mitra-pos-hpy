@@ -262,6 +262,8 @@ input:checked + .toggle-slider:before { transform:translateX(20px); }
 
 @push('scripts')
 <script>
+const whUrl = (id, action) => '{{ url("warehouses") }}/' + id + '/' + action;
+
 async function pullWarehouses() {
     const btn = document.getElementById('pullBtn');
     btn.innerHTML = '<span class="spinner"></span> Menarik...';
@@ -287,7 +289,7 @@ async function pullWarehouses() {
 async function toggleActive(id, checkbox) {
     const row = document.getElementById(`row_${id}`);
     try {
-        const res = await api.post(`/warehouses/${id}/toggle`);
+        const res = await api.post(whUrl(id, 'toggle'));
         if (res.success) {
             toast(res.message, 'success');
             // If deactivated, disable flag buttons
@@ -323,8 +325,8 @@ async function setDefault(id, btn) {
 
     // If already default, clicking clears it
     const url = isAlreadyDefault
-        ? `/warehouses/${id}/clear-flag`
-        : `/warehouses/${id}/set-default`;
+        ? whUrl(id, 'clear-flag')
+        : whUrl(id, 'set-default');
     const body = isAlreadyDefault ? { flag: 'is_default' } : {};
 
     try {
@@ -351,8 +353,8 @@ async function setTransit(id, btn) {
     const isAlreadyTransit = btn.classList.contains('active');
 
     const url = isAlreadyTransit
-        ? `/warehouses/${id}/clear-flag`
-        : `/warehouses/${id}/set-transit`;
+        ? whUrl(id, 'clear-flag')
+        : whUrl(id, 'set-transit');
     const body = isAlreadyTransit ? { flag: 'is_transit' } : {};
 
     try {

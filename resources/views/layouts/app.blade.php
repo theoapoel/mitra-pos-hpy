@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'HPYSync') — Point of Sale</title>
+    <title>@yield('title', 'HPYSync')</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -195,7 +195,7 @@
     <!-- Header -->
     <header class="header">
         <a href="{{ route('dashboard') }}" class="header-brand">
-            <img src="/images/happypos.png" alt="HappyPos"
+            <img src="{{ asset('images/happypos.png') }}" alt="HPYSync"
                 style="height:52px;width:auto;object-fit:contain;">
         </a>
         <div class="header-right">
