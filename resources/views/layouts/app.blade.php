@@ -230,8 +230,9 @@
             $canProducts      = $u->hasPermission('products');
             $canCustomers     = $u->hasPermission('customers');
             $canStockTransfer = $u->hasPermission('stock_transfer');
+            $canStock         = $u->hasPermission('stock');
             $canSync          = $u->hasPermission('sync');
-            $showManajemen    = $canProducts || $canCustomers || $canStockTransfer;
+            $showManajemen    = $canProducts || $canCustomers || $canStockTransfer || $canStock;
         @endphp
 
         <div class="nav-section">Menu</div>
@@ -261,6 +262,14 @@
         @if($canCustomers)
         <a href="{{ route('customers.index') }}" class="nav-item {{ request()->routeIs('customers.*') ? 'active' : '' }}">
             <i class="fas fa-users nav-icon"></i> Customer
+        </a>
+        @endif
+        @if($canStock)
+        <a href="{{ route('stock.index') }}" class="nav-item {{ request()->routeIs('stock.index') || request()->routeIs('stock.debug*') || request()->routeIs('stock.sync*') ? 'active' : '' }}">
+            <i class="fas fa-boxes nav-icon"></i> Stok Barang
+        </a>
+        <a href="{{ route('stock-opname.index') }}" class="nav-item {{ request()->routeIs('stock-opname.*') ? 'active' : '' }}">
+            <i class="fas fa-clipboard-list nav-icon"></i> Stock Opname
         </a>
         @endif
         @if($canStockTransfer)

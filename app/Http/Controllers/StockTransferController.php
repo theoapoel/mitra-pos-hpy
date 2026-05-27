@@ -68,6 +68,7 @@ class StockTransferController extends Controller
                 'transfer_no'         => StockTransfer::generateTransferNo('outgoing'),
                 'type'                => 'outgoing',
                 'status'              => 'draft',
+                'local_status'        => 'sent',
                 'from_warehouse'      => $request->from_warehouse,
                 'to_warehouse'        => $request->to_warehouse,
                 'in_transit_warehouse'=> $request->in_transit_warehouse,
@@ -105,7 +106,7 @@ class StockTransferController extends Controller
             }
 
             return redirect()->route('stock-transfer.show', $transfer)
-                ->with('warning', "Transfer disimpan, tapi sync ERP HPY gagal: {$result['error']}");
+                ->with('error', "Transfer disimpan, tapi sync ERP HPY gagal: {$result['error']}");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -188,6 +189,7 @@ class StockTransferController extends Controller
                 'transfer_no'     => StockTransfer::generateTransferNo('incoming'),
                 'type'            => 'incoming',
                 'status'          => 'draft',
+                'local_status'    => 'received',
                 'from_warehouse'  => $request->from_warehouse,
                 'to_warehouse'    => $request->to_warehouse,
                 'notes'           => $request->notes,
@@ -225,7 +227,7 @@ class StockTransferController extends Controller
             }
 
             return redirect()->route('stock-transfer.show', $transfer)
-                ->with('warning', "Penerimaan disimpan, tapi sync ERP HPY gagal: {$result['error']}");
+                ->with('error', "Penerimaan disimpan, tapi sync ERP HPY gagal: {$result['error']}");
 
         } catch (\Exception $e) {
             DB::rollBack();

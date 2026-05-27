@@ -108,10 +108,10 @@
                         @endif
                     </td>
                     <td>
-                        @if($t->status === 'submitted')
-                            <span class="badge badge-green">Submitted</span>
-                        @elseif($t->status === 'cancelled')
-                            <span class="badge badge-red">Dibatalkan</span>
+                        @if($t->local_status === 'received')
+                            <span class="badge badge-green">Diterima</span>
+                        @elseif($t->local_status === 'sent')
+                            <span class="badge badge-blue">Dikirim</span>
                         @else
                             <span class="badge badge-gray">Draft</span>
                         @endif

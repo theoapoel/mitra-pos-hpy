@@ -116,12 +116,12 @@
                         </td>
                     </tr>
                     <tr style="border-bottom:1px solid var(--border);">
-                        <td style="padding:8px 0;font-size:13px;color:var(--text2);">Status</td>
+                        <td style="padding:8px 0;font-size:13px;color:var(--text2);">Status Lokal</td>
                         <td style="padding:8px 0;text-align:right;">
-                            @if($transfer->status === 'submitted')
-                                <span class="badge badge-green">Submitted</span>
-                            @elseif($transfer->status === 'cancelled')
-                                <span class="badge badge-red">Dibatalkan</span>
+                            @if($transfer->local_status === 'received')
+                                <span class="badge badge-green">Diterima</span>
+                            @elseif($transfer->local_status === 'sent')
+                                <span class="badge badge-blue">Dikirim</span>
                             @else
                                 <span class="badge badge-gray">Draft</span>
                             @endif

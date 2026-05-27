@@ -33,6 +33,16 @@ class Product extends Model
         return $this->hasMany(TransactionItem::class);
     }
 
+    public function productStocks(): HasMany
+    {
+        return $this->hasMany(ProductStock::class);
+    }
+
+    public function stockInWarehouse(int $warehouseId): int
+    {
+        return $this->productStocks->firstWhere('warehouse_id', $warehouseId)?->quantity ?? 0;
+    }
+
     public function isLowStock(): bool
     {
         return $this->track_stock && $this->stock <= $this->min_stock;

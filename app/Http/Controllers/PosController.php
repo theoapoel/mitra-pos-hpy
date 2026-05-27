@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -76,6 +78,7 @@ class PosController extends Controller
 
         DB::beginTransaction();
         try {
+            $defaultWarehouse = Warehouse::getDefault();
             $subtotal = 0;
             $taxAmount = 0;
             $itemsData = [];
@@ -95,6 +98,10 @@ class PosController extends Controller
                 // Update stock
                 if ($product->track_stock) {
                     $product->decrement('stock', $qty);
+                    if ($defaultWarehouse) {
+                        ProductStock::forProductWarehouse($product->id, $defaultWarehouse->id)
+                            ->decrementQty($qty);
+                    }
                 }
 
                 $itemsData[] = [

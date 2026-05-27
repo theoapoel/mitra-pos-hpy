@@ -3,7 +3,8 @@
 use App\Http\Controllers\{
     DashboardController, PosController, ProductController,
     CustomerController, TransactionController, ErpSyncController,
-    StockTransferController, FactoryResetController, SettingsController,
+    StockTransferController, StockController, StockOpnameController,
+    FactoryResetController, SettingsController,
     UserController, PermissionController, RoleController, WarehouseController,
     BackupController
 };
@@ -64,6 +65,26 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:customers')->group(function () {
         Route::get('/customers/search', [CustomerController::class, 'search'])->name('customers.search');
         Route::resource('customers', CustomerController::class)->except(['show', 'create', 'edit']);
+    });
+
+    // Stock
+    Route::middleware('permission:stock')->group(function () {
+        Route::get('/stock',                              [StockController::class, 'index'])->name('stock.index');
+        Route::post('/stock/sync-bin',                    [StockController::class, 'syncFromBin'])->name('stock.sync-bin');
+        Route::post('/stock/sync-warehouse/{warehouse}',  [StockController::class, 'syncWarehouse'])->name('stock.sync-warehouse');
+    });
+    Route::get('/stock/debug-bin',  [StockController::class, 'debugBinEndpoint'])->name('stock.debug-bin');
+    Route::get('/stock/debug-sync', [StockController::class, 'debugSync'])->name('stock.debug-sync');
+
+    // Stock Opname
+    Route::prefix('stock-opname')->name('stock-opname.')->middleware('permission:stock')->group(function () {
+        Route::get('/',                         [StockOpnameController::class, 'index'])->name('index');
+        Route::get('/create',                   [StockOpnameController::class, 'create'])->name('create');
+        Route::post('/',                        [StockOpnameController::class, 'store'])->name('store');
+        Route::get('/{stockOpname}',            [StockOpnameController::class, 'show'])->name('show');
+        Route::post('/{stockOpname}/items',     [StockOpnameController::class, 'updateItems'])->name('update-items');
+        Route::post('/{stockOpname}/submit',    [StockOpnameController::class, 'submit'])->name('submit');
+        Route::post('/{stockOpname}/cancel',    [StockOpnameController::class, 'cancel'])->name('cancel');
     });
 
     // Stock Transfer

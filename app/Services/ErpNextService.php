@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Transaction;
 use App\Models\Customer;
+use App\Models\ProductStock;
 use App\Models\StockTransfer;
 use App\Models\ErpSyncLog;
 use App\Models\Warehouse;
@@ -94,9 +95,7 @@ class ErpNextService
             return ['success' => true, 'docname' => $docname];
 
         } catch (RequestException $e) {
-            $errorBody = $e->hasResponse()
-                ? $e->getResponse()->getBody()->getContents()
-                : $e->getMessage();
+            $errorBody = $this->extractError($e);
 
             $transaction->update([
                 'erp_sync_status' => 'failed',
@@ -373,9 +372,7 @@ class ErpNextService
             return ['success' => true, 'docname' => $docname];
 
         } catch (RequestException $e) {
-            $error = $e->hasResponse()
-                ? $e->getResponse()->getBody()->getContents()
-                : $e->getMessage();
+            $error = $this->extractError($e);
             $this->logSync('customer', $customer->id, $customer->code, 'failed', $payload, null, null, $error);
             return ['success' => false, 'error' => $error];
         }
@@ -407,6 +404,86 @@ class ErpNextService
         }
 
         return $results;
+    }
+
+    // =========================================================
+    // PULL STOCK FROM BIN (filtered by warehouse name)
+    // =========================================================
+    public function pullStockFromBin(string $warehouseName): array
+    {
+        try {
+            $response = $this->client->get('/api/resource/Bin', [
+                'timeout' => 120,
+                'query'   => [
+                    'fields'            => json_encode(['item_code', 'warehouse', 'actual_qty']),
+                    'filters'           => json_encode([['warehouse', '=', $warehouseName]]),
+                    'limit_page_length' => 0,
+                ]
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            return ['success' => true, 'data' => $data['data'] ?? []];
+
+        } catch (RequestException $e) {
+            return ['success' => false, 'error' => $this->extractError($e)];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // =========================================================
+    // STOCK OPNAME — Material Issue (actual berlebih dari sistem)
+    // =========================================================
+    public function createOpnameMaterialIssue(string $warehouseName, string $opnameDate, array $items): array
+    {
+        return $this->createOpnameStockEntry('Material Issue', $warehouseName, $opnameDate, $items, 's_warehouse');
+    }
+
+    // =========================================================
+    // STOCK OPNAME — Material Receipt (actual kurang dari sistem)
+    // =========================================================
+    public function createOpnameMaterialReceipt(string $warehouseName, string $opnameDate, array $items): array
+    {
+        return $this->createOpnameStockEntry('Material Receipt', $warehouseName, $opnameDate, $items, 't_warehouse');
+    }
+
+    private function createOpnameStockEntry(string $type, string $warehouseName, string $opnameDate, array $items, string $warehouseField): array
+    {
+        try {
+            $entryItems = array_map(fn($item) => [
+                'item_code'      => $item['item_code'],
+                'qty'            => abs($item['qty']),
+                'basic_rate'     => $item['basic_rate'] ?? 0,
+                $warehouseField  => $warehouseName,
+            ], $items);
+
+            $response = $this->client->post('/api/resource/Stock Entry', [
+                'json' => [
+                    'stock_entry_type' => $type,
+                    'purpose'          => $type,
+                    'posting_date'     => $opnameDate,
+                    'items'            => $entryItems,
+                    'remarks'          => 'Stock Opname - ' . $opnameDate,
+                ]
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true);
+            $name = $data['data']['name'] ?? null;
+
+            if (!$name) {
+                return ['success' => false, 'error' => 'Stock Entry dibuat tapi name tidak ada di response'];
+            }
+
+            $this->submitDoc('Stock Entry', $name);
+
+            return ['success' => true, 'name' => $name];
+
+        } catch (RequestException $e) {
+            return ['success' => false, 'error' => $this->extractError($e)];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
     }
 
     // =========================================================
@@ -525,15 +602,25 @@ class ErpNextService
                 'submitted_at'    => now(),
             ]);
 
+            // Kurangi stok dari warehouse pengirim
+            $fromWarehouse = Warehouse::where('name', $transfer->from_warehouse)->first();
+            if ($fromWarehouse) {
+                foreach ($transfer->items as $item) {
+                    if ($item->product_id) {
+                        ProductStock::forProductWarehouse($item->product_id, $fromWarehouse->id)
+                            ->decrementQty($item->quantity);
+                        $item->product->decrement('stock', $item->quantity);
+                    }
+                }
+            }
+
             $this->logSync('stock_transfer', $transfer->id, $transfer->transfer_no,
                 'success', $payload, $data, $docname);
 
             return ['success' => true, 'docname' => $docname];
 
         } catch (RequestException $e) {
-            $error = $e->hasResponse()
-                ? $e->getResponse()->getBody()->getContents()
-                : $e->getMessage();
+            $error = $this->extractError($e);
 
             $transfer->update(['erp_sync_status' => 'failed', 'erp_sync_error' => $error]);
             $this->logSync('stock_transfer', $transfer->id, $transfer->transfer_no,
@@ -550,8 +637,8 @@ class ErpNextService
     {
         $payload = [
             'doctype'           => 'Stock Entry',
-            'stock_entry_type'  => 'Material Transfer for Receive',
-            'purpose'           => 'Material Transfer for Receive',
+            'stock_entry_type'  => 'Material Transfer',
+            'purpose'           => 'Material Transfer',
             'company'           => \App\Models\Setting::get('erpnext_company', env('ERPNEXT_COMPANY')),
             'posting_date'      => now()->format('Y-m-d'),
             'posting_time'      => now()->format('H:i:s'),
@@ -586,10 +673,16 @@ class ErpNextService
                 'submitted_at'    => now(),
             ]);
 
-            // Update local product stock
+            // Update stok lokal per warehouse
+            $toWarehouse = Warehouse::where('name', $transfer->to_warehouse)->first();
             foreach ($transfer->items as $item) {
                 if ($item->product_id) {
-                    $item->product->increment('stock', $item->actual_quantity ?? $item->quantity);
+                    $qty = $item->actual_quantity ?? $item->quantity;
+                    $item->product->increment('stock', $qty);
+                    if ($toWarehouse) {
+                        ProductStock::forProductWarehouse($item->product_id, $toWarehouse->id)
+                            ->incrementQty($qty);
+                    }
                 }
             }
 
@@ -599,9 +692,7 @@ class ErpNextService
             return ['success' => true, 'docname' => $docname];
 
         } catch (RequestException $e) {
-            $error = $e->hasResponse()
-                ? $e->getResponse()->getBody()->getContents()
-                : $e->getMessage();
+            $error = $this->extractError($e);
 
             $transfer->update(['erp_sync_status' => 'failed', 'erp_sync_error' => $error]);
             $this->logSync('stock_transfer', $transfer->id, $transfer->transfer_no,
@@ -668,6 +759,23 @@ class ErpNextService
         } catch (\Exception $e) {
             return ['success' => false, 'error' => 'Error: ' . $e->getMessage()];
         }
+    }
+
+    private function extractError(RequestException $e): string
+    {
+        if (!$e->hasResponse()) {
+            return $e->getMessage();
+        }
+
+        $status = $e->getResponse()->getStatusCode();
+        $body   = $e->getResponse()->getBody()->getContents();
+
+        // HTML response (maintenance page, nginx error, etc.)
+        if (str_starts_with(ltrim($body), '<')) {
+            return "Server ERP HPY tidak tersedia (HTTP {$status}). Coba beberapa saat lagi.";
+        }
+
+        return $body ?: $e->getMessage();
     }
 
     private function logSync(

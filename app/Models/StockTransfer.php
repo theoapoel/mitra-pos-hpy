@@ -11,7 +11,7 @@ class StockTransfer extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'transfer_no', 'type', 'status',
+        'transfer_no', 'type', 'status', 'local_status',
         'from_warehouse', 'to_warehouse', 'in_transit_warehouse',
         'notes', 'user_id', 'submitted_at',
         'erp_stock_entry', 'erp_source_entry',
