@@ -1,35 +1,35 @@
-# 🛒 HappyPOS — Point of Sale Laravel + HPY
+# Mitra POS HPY
 
-> Sistem kasir modern berbasis Laravel 10, database MariaDB, UI terinspirasi Google,
-> dilengkapi sinkronisasi penuh ke **HPY**.
+> Sistem kasir modern berbasis **Laravel 11**, database MySQL/MariaDB, UI Blade + Vite,
+> dilengkapi sinkronisasi penuh ke **ERP HPY (HPY)**.
 
 ---
 
-## 📋 DAFTAR ISI
+## Daftar Isi
 
 1. [Persyaratan Sistem](#persyaratan-sistem)
-2. [Langkah Instalasi Lengkap](#langkah-instalasi-lengkap)
-3. [Konfigurasi Database](#konfigurasi-database)
-4. [Menjalankan Aplikasi](#menjalankan-aplikasi)
-5. [Login Pertama Kali](#login-pertama-kali)
-6. [Konfigurasi ERPNext](#konfigurasi-erpnext)
-7. [Fitur-Fitur Utama](#fitur-fitur-utama)
-8. [Struktur Project](#struktur-project)
-9. [Troubleshooting](#troubleshooting)
+2. [Langkah Instalasi](#langkah-instalasi)
+3. [Login Pertama Kali](#login-pertama-kali)
+4. [Konfigurasi ERPNext](#konfigurasi-erpnext)
+5. [Fitur-Fitur Utama](#fitur-fitur-utama)
+6. [Struktur Project](#struktur-project)
+7. [Perintah Berguna](#perintah-berguna)
+8. [Troubleshooting](#troubleshooting)
+9. [Production Deployment](#production-deployment)
 
 ---
 
-## ✅ PERSYARATAN SISTEM
+## Persyaratan Sistem
 
-| Komponen      | Versi Minimum | Cek Perintah          |
-|---------------|---------------|-----------------------|
-| PHP           | 8.1+          | `php -v`              |
-| Composer      | 2.x           | `composer --version`  |
-| MariaDB/MySQL | 10.3+ / 8.0+  | `mysql --version`     |
-| Node.js       | 16+           | `node -v`             |
-| NPM           | 8+            | `npm -v`              |
+| Komponen      | Versi Minimum | Cek Perintah         |
+|---------------|---------------|----------------------|
+| PHP           | 8.2+          | `php -v`             |
+| Composer      | 2.x           | `composer --version` |
+| MySQL/MariaDB | 8.0+ / 10.3+  | `mysql --version`    |
+| Node.js       | 18+           | `node -v`            |
+| NPM           | 9+            | `npm -v`             |
 
-### Ekstensi PHP yang dibutuhkan:
+Ekstensi PHP yang dibutuhkan:
 ```
 php-mbstring  php-xml  php-curl  php-json
 php-zip       php-pdo  php-mysql php-fileinfo
@@ -37,32 +37,27 @@ php-zip       php-pdo  php-mysql php-fileinfo
 
 ---
 
-## 🚀 LANGKAH INSTALASI LENGKAP
+## Langkah Instalasi
 
-### LANGKAH 1 — Clone / Ekstrak Project
+### Langkah 1 — Clone / Ekstrak Project
 
 ```bash
-# Jika dari ZIP, ekstrak ke folder Anda, lalu masuk:
-cd laravel-pos
-
-# Atau jika dari Git:
-git clone <repo-url> laravel-pos
-cd laravel-pos
+git clone <repo-url> mitra-pos-hpy
+cd mitra-pos-hpy
 ```
 
 ---
 
-### LANGKAH 2 — Install Dependensi PHP
+### Langkah 2 — Install Dependensi
 
 ```bash
 composer install
+npm install
 ```
-
-> ⏳ Proses ini membutuhkan koneksi internet dan mungkin memakan waktu 2–5 menit.
 
 ---
 
-### LANGKAH 3 — Salin File Konfigurasi
+### Langkah 3 — Salin File Konfigurasi
 
 ```bash
 cp .env.example .env
@@ -70,118 +65,108 @@ cp .env.example .env
 
 ---
 
-### LANGKAH 4 — Generate Application Key
+### Langkah 4 — Generate Application Key
 
 ```bash
 php artisan key:generate
 ```
 
-Output yang diharapkan:
-```
-Application key set successfully.
+---
+
+### Langkah 5 — Buat Database
+
+```sql
+-- Login ke MySQL/MariaDB, lalu jalankan:
+CREATE DATABASE mitra_pos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 ---
 
-### LANGKAH 5 — Buat Database di MariaDB
+### Langkah 6 — Konfigurasi `.env`
 
-Buka terminal MariaDB/MySQL Anda:
-
-```bash
-# Login ke MariaDB
-mysql -u root -p
-
-# Di dalam MySQL prompt:
-CREATE DATABASE larapos CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'larapos_user'@'localhost' IDENTIFIED BY 'larapos_password123';
-GRANT ALL PRIVILEGES ON larapos.* TO 'larapos_user'@'localhost';
-FLUSH PRIVILEGES;
-EXIT;
-```
-
----
-
-### LANGKAH 6 — Konfigurasi Database di .env
-
-Buka file `.env` dengan text editor, ubah bagian ini:
+Buka file `.env`, sesuaikan bagian ini:
 
 ```env
-APP_NAME="LaraPos"
+APP_NAME="Mitra POS HPY"
 APP_URL=http://localhost:8000
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=larapos
-DB_USERNAME=larapos_user
-DB_PASSWORD=larapos_password123
+DB_DATABASE=mitra_pos
+DB_USERNAME=root
+DB_PASSWORD=
 ```
 
-> 💡 Jika menggunakan XAMPP/WAMP, `DB_USERNAME=root` dan `DB_PASSWORD=` (kosong)
+> Jika menggunakan XAMPP: `DB_USERNAME=root` dan `DB_PASSWORD=` (kosong)
 
 ---
 
-### LANGKAH 7 — Jalankan Migrasi Database
+### Langkah 7 — Jalankan Migrasi Database
 
 ```bash
 php artisan migrate
 ```
 
-Output yang diharapkan:
-```
-  INFO  Running migrations.
-
-  2024_01_01_000001_create_users_table ..................... 12ms DONE
-  2024_01_01_000002_create_categories_table ................ 8ms DONE
-  2024_01_01_000003_create_products_table .................. 9ms DONE
-  2024_01_01_000004_create_customers_table ................. 7ms DONE
-  2024_01_01_000005_create_transactions_table .............. 11ms DONE
-  2024_01_01_000006_create_supporting_tables ............... 10ms DONE
-```
-
 ---
 
-### LANGKAH 8 — Isi Data Demo (Opsional tapi Direkomendasikan)
+### Langkah 8 — Isi Data Demo (Opsional, Direkomendasikan)
 
 ```bash
 php artisan db:seed
 ```
 
 Seeder akan membuat:
-- ✅ **3 akun user** (admin, kasir, manager)
-- ✅ **6 kategori** produk
-- ✅ **26 produk** demo (minuman, makanan, snack, dll)
-- ✅ **8 customer** demo
-- ✅ **~300 transaksi** demo selama 30 hari terakhir
-- ✅ **Pengaturan** default toko
+- 3 akun user (admin, manager, kasir)
+- 6 kategori produk
+- 26 produk demo
+- 8 customer demo
+- ~300 transaksi demo selama 30 hari terakhir
+- Pengaturan default toko
 
 ---
 
-### LANGKAH 9 — Jalankan Aplikasi
+### Langkah 9 — Build Frontend Assets
 
 ```bash
-php artisan serve
+npm run build
 ```
 
-Buka browser dan akses: **http://localhost:8000**
+Atau untuk development (watch mode):
+```bash
+npm run dev
+```
 
 ---
 
-## 🔐 LOGIN PERTAMA KALI
+### Langkah 10 — Jalankan Aplikasi
 
-Setelah seeder berjalan, gunakan akun berikut:
+```bash
+# Jika menggunakan XAMPP: akses langsung lewat Apache
+http://localhost/mitra-pos-hpy/public
 
-| Role    | Email                   | Password  |
-|---------|-------------------------|-----------|
-| Admin   | `admin@larapos.com`     | `password` |
-| Kasir   | `kasir@larapos.com`     | `password` |
-| Manager | `manager@larapos.com`   | `password` |
-
-> ⚠️ **PENTING:** Ganti password segera setelah login pertama di production!
+# Atau jalankan standalone:
+php artisan serve
+# Akses: http://localhost:8000
+```
 
 ---
 
-## 🔗 KONFIGURASI ERPNEXT
+## Login Pertama Kali
+
+| Role    | Email                  | Password   | PIN    |
+|---------|------------------------|------------|--------|
+| Admin   | admin@larapos.com      | `password` | 123456 |
+| Manager | manager@larapos.com    | `password` | 111222 |
+| Kasir   | kasir@larapos.com      | `password` | 654321 |
+
+> Kasir langsung diarahkan ke halaman POS setelah login. Admin dan Manager diarahkan ke Dashboard.
+
+> **PENTING:** Ganti password segera setelah login pertama di production!
+
+---
+
+## Konfigurasi ERPNext
 
 ### Di Sisi ERPNext (lakukan dulu):
 
@@ -203,27 +188,26 @@ ERPNext → Point of Sale → POS Profile → New
 ```
 ERPNext → Selling → Customer → New
 → Customer Name: "Walk-in Customer"
-→ Customer Type: Individual
 → Simpan
 ```
 
-**4. Pastikan item ada di ERPNext** dengan field `is_sales_item = Yes`
+**4. Pastikan item ada di ERPNext** dengan `is_sales_item = Yes`
 
 ---
 
-### Di Sisi LaraPos:
+### Di Sisi Mitra POS:
 
 Buka menu **Sync ERPNext** → isi form konfigurasi:
 
 ```
-ERPNext URL      : http://your-erpnext-domain.com
-API Key          : (dari langkah di atas)
-API Secret       : (dari langkah di atas)
-Company          : Nama perusahaan Anda di ERPNext
-POS Profile      : Nama POS Profile yang sudah dibuat
+ERPNext URL  : http://your-erpnext-domain.com
+API Key      : (dari langkah di atas)
+API Secret   : (dari langkah di atas)
+Company      : Nama perusahaan di ERPNext
+POS Profile  : Nama POS Profile yang sudah dibuat
 ```
 
-Klik **"Test Koneksi"** → harus muncul status **"Terhubung ✅"**
+Klik **"Test Koneksi"** → harus muncul status **"Terhubung"**
 
 Klik **"Simpan"**, lalu:
 - **"Pull Produk"** → import semua item dari ERPNext
@@ -232,200 +216,226 @@ Klik **"Simpan"**, lalu:
 
 ---
 
-## 🎯 FITUR-FITUR UTAMA
+## Fitur-Fitur Utama
 
-### 💰 Kasir (POS)
-- ✅ Grid produk dengan pencarian real-time
-- ✅ Filter per kategori
-- ✅ Support barcode scanner (tekan **F3** untuk fokus ke input barcode)
-- ✅ Manajemen keranjang (tambah/kurang/hapus item)
-- ✅ Diskon nominal (Rp) dan persentase (%)
-- ✅ Kalkulasi pajak per produk
-- ✅ 4 metode pembayaran: Tunai / Kartu / Transfer / QRIS
-- ✅ Hitung kembalian otomatis
-- ✅ Tombol nominal cepat
-- ✅ Pilih / tambah customer
-- ✅ Struk digital dan cetak struk
+### Kasir (POS)
+- Grid produk dengan pencarian real-time
+- Filter per kategori
+- Support barcode scanner (tekan **F3** untuk fokus input barcode)
+- Manajemen keranjang (tambah/kurang/hapus item)
+- Diskon nominal (Rp) dan persentase (%)
+- Kalkulasi pajak per produk
+- 4 metode pembayaran: Tunai / Kartu / Transfer / QRIS
+- Hitung kembalian otomatis, tombol nominal cepat
+- Pilih / tambah customer
+- Struk digital dan cetak struk thermal
 
-### 📊 Dashboard
-- ✅ Statistik penjualan hari ini
-- ✅ Grafik penjualan 7 hari (Chart.js)
-- ✅ 5 produk terlaris (30 hari)
-- ✅ Transaksi terbaru
-- ✅ Alert stok menipis
+### Dashboard
+- Statistik penjualan hari ini
+- Grafik penjualan 7 hari (Chart.js)
+- 5 produk terlaris (30 hari)
+- Transaksi terbaru
+- Alert stok menipis
 
-### 📦 Manajemen Produk
-- ✅ CRUD produk lengkap
-- ✅ Manajemen stok dengan alert minimum
-- ✅ Kategori dengan warna dan icon
-- ✅ Barcode support
-- ✅ Pajak per produk
+### Manajemen Produk
+- CRUD produk lengkap
+- Tracking stok dengan alert stok minimum
+- Kategori dengan warna dan icon
+- Barcode support
+- Pajak per produk
+- Sinkronisasi gambar produk dari HPYERP
 
-### 👥 Manajemen Customer
-- ✅ CRUD customer
-- ✅ Tracking total pembelian
-- ✅ Push customer ke ERPNext
+### Manajemen Customer
+- CRUD customer
+- Tracking total pembelian
+- Push customer ke HPYERP
 
-### 🧾 Riwayat Transaksi
-- ✅ Filter tanggal, status, metode bayar
-- ✅ Detail transaksi lengkap
-- ✅ Cetak ulang struk
-- ✅ Batalkan transaksi (restore stok)
+### Riwayat Transaksi
+- Filter tanggal, status, metode bayar
+- Detail transaksi lengkap
+- Cetak ulang struk
+- Batalkan transaksi — stok otomatis dikembalikan (admin/manager)
 
-### 🔄 Sinkronisasi ERPNext v13
-- ✅ Test koneksi real-time
-- ✅ Pull produk dari ERPNext
-- ✅ Pull customer dari ERPNext
-- ✅ Push transaksi sebagai **POS Invoice** (auto-submit)
-- ✅ Push customer baru ke ERPNext
-- ✅ Retry transaksi gagal
-- ✅ Log sinkronisasi lengkap
-- ✅ Badge notifikasi pending sync
+### Multi-Warehouse & Stock Transfer
+- Manajemen beberapa gudang (pemetaan 1:1 ke ERPNext Warehouse)
+- Transfer stok antar gudang dengan status lokal (`pending` / `submitted` / `cancelled`)
+- Sinkronisasi ke ERPNext Warehouse Transfer document
+- Soft-delete untuk audit trail
+
+### Stock Opname
+- Buat sesi stock opname per gudang
+- Input hitungan fisik per item
+- Submit untuk memperbarui stok sistem
+- Batalkan opname yang belum disubmit
+- Riwayat opname lengkap
+
+### Stok per Gudang (ProductStock)
+- Tracking stok per produk per gudang
+- Sync dari ERPNext Bin (stok aktual ERPHPY)
+- Sync per-warehouse on demand
+
+### Sinkronisasi ERPHPY
+- Test koneksi real-time
+- Pull produk & customer dari ERPHPY
+- Push transaksi sebagai POS Invoice (auto-submit)
+- Retry transaksi gagal
+- Log sinkronisasi lengkap
+- Badge notifikasi pending sync
+
+### Manajemen Pengguna & Hak Akses
+- CRUD user dengan role: `admin`, `manager`, `kasir`
+- Matriks permission per modul: `dashboard`, `pos`, `transactions`, `products`, `customers`, `stock_transfer`, `stock`, `sync`
+- Permission di-cache per role (300 detik)
+- Login dengan PIN untuk sesi kasir
 
 ---
 
-## 🗂️ STRUKTUR PROJECT
+## Struktur Project
 
 ```
-laravel-pos/
+mitra-pos-hpy/
 ├── app/
 │   ├── Http/Controllers/
-│   │   ├── DashboardController.php    ← Dashboard & statistik
-│   │   ├── PosController.php          ← Kasir & checkout
-│   │   ├── ProductController.php      ← CRUD produk
-│   │   ├── CustomerController.php     ← CRUD customer
-│   │   ├── TransactionController.php  ← Riwayat transaksi
-│   │   └── ErpSyncController.php      ← Sinkronisasi ERPNext
+│   │   ├── DashboardController.php       ← Dashboard & statistik
+│   │   ├── PosController.php             ← Kasir & checkout
+│   │   ├── ProductController.php         ← CRUD produk
+│   │   ├── CustomerController.php        ← CRUD customer
+│   │   ├── TransactionController.php     ← Riwayat transaksi
+│   │   ├── StockTransferController.php   ← Transfer stok antar gudang
+│   │   ├── StockController.php           ← Stok per gudang & sync Bin
+│   │   ├── StockOpnameController.php     ← Stock opname
+│   │   ├── ErpSyncController.php         ← Sinkronisasi ERPHPY
+│   │   ├── UserController.php
+│   │   ├── PermissionController.php
+│   │   ├── RoleController.php
+│   │   ├── WarehouseController.php
+│   │   ├── SettingsController.php
+│   │   ├── BackupController.php
+│   │   └── FactoryResetController.php
 │   ├── Models/
 │   │   ├── User.php
 │   │   ├── Product.php
+│   │   ├── ProductStock.php              ← Stok per produk per gudang
 │   │   ├── Category.php
 │   │   ├── Customer.php
 │   │   ├── Transaction.php
 │   │   ├── TransactionItem.php
+│   │   ├── StockTransfer.php
+│   │   ├── StockOpname.php
+│   │   ├── StockOpnameItem.php
+│   │   ├── Warehouse.php
+│   │   ├── RolePermission.php
 │   │   ├── ErpSyncLog.php
 │   │   └── Setting.php
 │   └── Services/
-│       └── ErpNextService.php         ← Semua API call ke ERPNext
-├── config/
-│   └── erpnext.php                    ← Konfigurasi ERPNext
+│       └── ERPNextService.php            ← Semua API call ke ERP HPY (Guzzle)
 ├── database/
-│   ├── migrations/                    ← 6 file migrasi
-│   ├── seeders/
-│   │   └── DatabaseSeeder.php         ← Data demo lengkap
-│   └── larapos_schema.sql             ← SQL dump manual (backup)
+│   ├── migrations/                       ← 19 file migrasi
+│   └── seeders/
+│       └── DatabaseSeeder.php
 ├── resources/views/
-│   ├── layouts/app.blade.php          ← Layout utama (Google-style)
-│   ├── auth/login.blade.php           ← Halaman login
-│   ├── dashboard.blade.php            ← Dashboard
+│   ├── layouts/app.blade.php
 │   ├── pos/
-│   │   ├── index.blade.php            ← 🌟 Halaman kasir utama
-│   │   ├── receipt.blade.php          ← Struk digital
-│   │   └── print-receipt.blade.php    ← Struk cetak thermal
-│   ├── products/                      ← Manajemen produk
-│   ├── customers/                     ← Manajemen customer
-│   ├── transactions/                  ← Riwayat transaksi
-│   └── sync/index.blade.php           ← 🔄 Halaman sync ERPNext
-└── routes/web.php                     ← Semua route
+│   ├── products/
+│   ├── customers/
+│   ├── transactions/
+│   ├── stock-transfer/
+│   ├── stock-opname/
+│   ├── stock/
+│   ├── sync/
+│   ├── users/
+│   ├── permissions/
+│   ├── roles/
+│   ├── warehouses/
+│   └── settings/
+└── routes/web.php
 ```
 
 ---
 
-## 🛠️ TROUBLESHOOTING
-
-### ❌ Error: `SQLSTATE[HY000] [2002] Connection refused`
-**Solusi:** Pastikan MariaDB/MySQL berjalan.
-```bash
-# Linux/Mac:
-sudo systemctl start mariadb
-# atau:
-sudo service mysql start
-
-# XAMPP: Start MySQL dari XAMPP Control Panel
-```
-
-### ❌ Error: `Class 'App\Models\Setting' not found` saat load config
-**Solusi:** Jalankan migrasi dulu sebelum memuat config ERPNext.
-```bash
-php artisan migrate
-php artisan config:clear
-php artisan cache:clear
-```
-
-### ❌ Error: `storage/logs` tidak bisa ditulis
-**Solusi:**
-```bash
-chmod -R 775 storage bootstrap/cache
-```
-
-### ❌ Error: `php artisan key:generate` tidak bisa
-**Solusi:** Pastikan file `.env` sudah ada:
-```bash
-cp .env.example .env
-php artisan key:generate
-```
-
-### ❌ Gambar/CSS tidak muncul
-**Solusi:**
-```bash
-php artisan storage:link
-```
-
-### ❌ ERPNext: `401 Unauthorized`
-- Pastikan API Key dan Secret benar
-- Cek apakah user ERPNext memiliki role yang cukup (System Manager atau Sales User)
-- Coba regenerate API keys di ERPNext
-
-### ❌ ERPNext: `POS Profile not found`
-- Nama POS Profile harus **sama persis** (case-sensitive) dengan yang ada di ERPNext
-- Pastikan POS Profile sudah di-**enable** di ERPNext
-
-### ❌ ERPNext: `Customer does not exist`
-- Buat customer "Walk-in Customer" di ERPNext
-- Atau pull customer dulu: **Sync ERPNext → Pull Customer**
-
----
-
-## ⚙️ PERINTAH BERGUNA
+## Perintah Berguna
 
 ```bash
-# Reset database dan isi ulang data demo
+# Reset database & isi ulang data demo
 php artisan migrate:fresh --seed
 
-# Bersihkan cache
+# Bersihkan semua cache
 php artisan cache:clear && php artisan config:clear && php artisan route:clear
 
 # Lihat semua route
 php artisan route:list
 
-# Jalankan di port berbeda
-php artisan serve --port=9000
+# Linting PSR-12 (Laravel Pint)
+./vendor/bin/pint --test   # cek saja
+./vendor/bin/pint           # auto-fix
 
-# Optimasi untuk production
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# Jalankan tests
+./vendor/bin/phpunit
+
+# Build production
+npm run build
 ```
 
 ---
 
-## 🌐 PRODUCTION DEPLOYMENT
+## Troubleshooting
 
-Jika ingin deploy ke server (Nginx + PHP-FPM):
+### Error: `SQLSTATE[HY000] [2002] Connection refused`
+Pastikan MySQL/MariaDB berjalan. Di XAMPP: Start MySQL dari Control Panel.
+
+### Error: SSL certificate saat `git push`
+```bash
+git config --global http.sslBackend schannel
+```
+
+### Error: `storage/logs` tidak bisa ditulis
+```bash
+chmod -R 775 storage bootstrap/cache
+# Windows (XAMPP): pastikan folder storage tidak read-only
+```
+
+### Gambar/CSS tidak muncul
+```bash
+php artisan storage:link
+```
+
+### ERP HPY: `401 Unauthorized`
+- Pastikan API Key dan Secret benar di menu Settings
+- User ERP HPY harus punya role System Manager atau Sales User
+- Coba regenerate API keys di ERP HPY
+
+### ERP HPY: `POS Profile not found`
+- Nama POS Profile harus **sama persis** (case-sensitive) dengan di ERP HPY
+- Pastikan POS Profile sudah di-enable
+
+### ERP HPY: `Customer does not exist`
+- Buat customer "Walk-in Customer" di ERP HPY
+- Atau pull customer dulu: **Sync ERP HPY → Pull Customer**
+
+### Permission tidak berlaku setelah diubah
+Cache permission di-reset otomatis saat menyimpan perubahan, tapi jika masih bermasalah:
+```bash
+php artisan cache:clear
+```
+
+---
+
+## Production Deployment
 
 ```bash
-# 1. Set environment
+# 1. Set environment di .env
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://pos.yourdomain.com
 
-# 2. Optimasi
+# 2. Install & optimasi
 composer install --no-dev --optimize-autoloader
+npm run build
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# 3. Permission
+# 3. Permission folder
 chmod -R 755 storage bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
 ```
@@ -435,7 +445,7 @@ chown -R www-data:www-data storage bootstrap/cache
 server {
     listen 80;
     server_name pos.yourdomain.com;
-    root /var/www/laravel-pos/public;
+    root /var/www/mitra-pos-hpy/public;
     index index.php;
 
     location / {
@@ -443,7 +453,7 @@ server {
     }
 
     location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
     }
@@ -452,27 +462,4 @@ server {
 
 ---
 
-## 📞 AKUN DEFAULT SETELAH SEEDER
-
-```
-┌─────────────────────────────────────────────┐
-│  👤 ADMIN                                   │
-│  Email    : admin@larapos.com               │
-│  Password : password                        │
-│  PIN      : 123456                          │
-├─────────────────────────────────────────────┤
-│  🧑‍💼 KASIR                                  │
-│  Email    : kasir@larapos.com               │
-│  Password : password                        │
-│  PIN      : 654321                          │
-├─────────────────────────────────────────────┤
-│  👔 MANAGER                                 │
-│  Email    : manager@larapos.com             │
-│  Password : password                        │
-│  PIN      : 111222                          │
-└─────────────────────────────────────────────┘
-```
-
----
-
-*LaraPos — Dibuat dengan ❤️ menggunakan Laravel 10 + ERPNext v13*
+*Mitra POS HPY — Laravel 11 + ERP HPY*
